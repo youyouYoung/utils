@@ -1,9 +1,12 @@
 package redis;
 
 import logger.Logger;
+import property.CustomProperties;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
+
+import java.util.Properties;
 
 /**
  * 功能描述: 线程池工具类
@@ -14,29 +17,23 @@ import redis.clients.jedis.JedisPoolConfig;
 public class CodisConnector {
     private static Logger logger = Logger.getLogger(CodisConnector.class, "redis");
 
-    private static int expire;
     private static JedisPool pool;
 
     static {
+        Properties properties = CustomProperties.getProperties();
+
         JedisPoolConfig config = new JedisPoolConfig();
-        config.setMaxTotal(Integer.valueOf("codis.pool.maxActive"));
-        config.setMaxIdle(Integer.valueOf("codis.pool.maxIdle"));
-        config.setTestOnBorrow(Boolean.valueOf("codis.pool.testOnBorrow"));
-        config.setTestOnReturn(Boolean.valueOf("codis.pool.testOnReturn"));
+        config.setMaxTotal(Integer.valueOf(properties.getProperty("redis.pool.maxActive")));
+        config.setMaxIdle(Integer.valueOf(properties.getProperty("redis.pool.maxIdle")));
 
 
         pool = new JedisPool(config
-                , "codis.ip"
-                , Integer.valueOf("codis.port")
-                , Integer.parseInt("codis.pool.timeout")
-                , "codis.password", 0);
+                , properties.getProperty("redis.ip")
+                , Integer.valueOf(properties.getProperty("redis.port"))
+                , Integer.parseInt(properties.getProperty("redis.pool.timeout"))
+                , properties.getProperty("redis.password"), 0);
 
-        logger.info("redis.ip: codis.ip");
-        expire = Integer.valueOf("codis.expire");
-    }
-
-    public CodisConnector() {
-
+        logger.info("redis.ip: redis.ip");
     }
 
     private static Jedis getJedis() {
@@ -44,7 +41,7 @@ public class CodisConnector {
     }
 
     public static long del(String key) {
-        Jedis jedis = pool.getResource();
+        Jedis jedis = getJedis();
         try {
             return jedis.del(key);
         } catch (Exception e) {
@@ -56,7 +53,7 @@ public class CodisConnector {
     }
 
     public static long setnx(String key, int expire, String value) {
-        Jedis jedis = pool.getResource();
+        Jedis jedis = getJedis();
         try {
 
             if ("OK".equals(jedis.set(key, value, "NX", "EX", expire))) {
@@ -65,7 +62,7 @@ public class CodisConnector {
             return 0;
 
         } catch (Exception e) {
-            logger.error("codis异常:", e);
+            logger.error("redis异常:", e);
         } finally {
             jedis.close();
         }
